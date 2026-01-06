@@ -32,8 +32,8 @@ export default async function SettingsPage() {
   const ownedCategoriesResult = await getOwnedCategoriesWithShares();
   const sharedWithMeResult = await getSharedWithMeCategories();
 
-  const ownedCategories = ownedCategoriesResult.success ? ownedCategoriesResult.data : [];
-  const sharedWithMe = sharedWithMeResult.success ? sharedWithMeResult.data : [];
+  const ownedCategories = (ownedCategoriesResult.success && ownedCategoriesResult.data ? ownedCategoriesResult.data : []) as (typeof ownedCategoriesResult extends { success: true; data: infer T } ? T : never)[];
+  const sharedWithMe = (sharedWithMeResult.success && sharedWithMeResult.data ? sharedWithMeResult.data : []) as (typeof sharedWithMeResult extends { success: true; data: infer T } ? T : never)[];
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50">

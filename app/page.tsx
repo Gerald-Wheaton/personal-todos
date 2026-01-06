@@ -34,7 +34,7 @@ export default async function HomePage() {
     .from(categoryShares)
     .where(eq(categoryShares.sharedWithUserId, user.id));
 
-  const sharedCategories = sharedCategoryIds.length > 0
+  const sharedCategoriesRaw = sharedCategoryIds.length > 0
     ? await db.query.categories.findMany({
         where: inArray(categories.id, sharedCategoryIds.map(({ categoryId }) => categoryId)),
         with: {
@@ -46,6 +46,9 @@ export default async function HomePage() {
         },
       })
     : [];
+
+  // Filter out categories without a user (shouldn't happen, but TypeScript needs this)
+  const sharedCategories = sharedCategoriesRaw.filter((cat): cat is typeof cat & { user: NonNullable<typeof cat.user> } => cat.user !== null);
 
   // Fetch uncategorized incomplete todos only for current user
   const uncategorizedTodos = await db
