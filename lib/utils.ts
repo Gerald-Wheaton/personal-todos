@@ -39,3 +39,30 @@ export function getLightColor(hexColor: string): string {
 
   return `#${lighten(r).toString(16).padStart(2, '0')}${lighten(g).toString(16).padStart(2, '0')}${lighten(b).toString(16).padStart(2, '0')}`;
 }
+
+// Sort todos by due date first (nulls last), then alphabetically by title
+export function sortTodosByDueDateThenTitle<T extends { dueDate?: Date | string | null; title: string }>(todos: T[]): T[] {
+  return [...todos].sort((a, b) => {
+    // First, sort by due date
+    const aDueDate = a.dueDate ? new Date(a.dueDate).getTime() : null;
+    const bDueDate = b.dueDate ? new Date(b.dueDate).getTime() : null;
+
+    // If both have due dates, sort by date (earlier first)
+    if (aDueDate !== null && bDueDate !== null) {
+      if (aDueDate !== bDueDate) {
+        return aDueDate - bDueDate;
+      }
+    }
+    // If only one has a due date, that one comes first
+    else if (aDueDate !== null && bDueDate === null) {
+      return -1;
+    }
+    else if (aDueDate === null && bDueDate !== null) {
+      return 1;
+    }
+    // If both are null, continue to title sorting
+
+    // Then sort alphabetically by title
+    return a.title.localeCompare(b.title);
+  });
+}

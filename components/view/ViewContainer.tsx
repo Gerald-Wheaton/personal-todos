@@ -7,10 +7,12 @@ import AddCategoryButton from '@/components/category/AddCategoryButton';
 import OverviewView from './OverviewView';
 import TodayView from './TodayView';
 import HistoryView from './HistoryView';
-import type { Category, Todo } from '@/db/schema';
+import type { Category, Todo, User } from '@/db/schema';
+import { Users } from 'lucide-react';
 
 interface ViewContainerProps {
   categoriesWithTodos: (Category & { todos: Todo[] })[];
+  sharedCategories: (Category & { todos: Todo[]; user: User })[];
   uncategorizedTodos: Todo[];
   categoriesWithCompletedTodos: (Category & { todos: Todo[] })[];
   uncategorizedCompletedTodos: Todo[];
@@ -18,6 +20,7 @@ interface ViewContainerProps {
 
 export default function ViewContainer({
   categoriesWithTodos,
+  sharedCategories,
   uncategorizedTodos,
   categoriesWithCompletedTodos,
   uncategorizedCompletedTodos,
@@ -72,6 +75,32 @@ export default function ViewContainer({
               onAccordionToggle={setOpenAccordionId}
             />
           ))}
+
+          {/* Shared categories section */}
+          {sharedCategories.length > 0 && (
+            <>
+              <div className="my-8 flex items-center gap-3">
+                <div className="flex-1 h-px bg-purple-200" />
+                <div className="flex items-center gap-2 px-3">
+                  <Users size={16} className="text-purple-600" />
+                  <span className="text-sm font-medium text-purple-600">Shared With Me</span>
+                </div>
+                <div className="flex-1 h-px bg-purple-200" />
+              </div>
+
+              {sharedCategories.map((category) => (
+                <CategorySection
+                  key={category.id}
+                  category={category}
+                  todos={category.todos}
+                  openAccordionId={openAccordionId}
+                  onAccordionToggle={setOpenAccordionId}
+                  isShared={true}
+                  sharedBy={category.user.username}
+                />
+              ))}
+            </>
+          )}
 
           {/* Add category button */}
           <AddCategoryButton />

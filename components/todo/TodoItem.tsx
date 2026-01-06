@@ -8,14 +8,15 @@ import { formatDate } from '@/lib/utils';
 import TodoCheckbox from './TodoCheckbox';
 import DatePicker from '@/components/ui/DatePicker';
 import AssigneeSelector from '@/components/assignee/AssigneeSelector';
-import type { Todo, Assignee } from '@/db/schema';
+import type { Todo, Assignee, Category } from '@/db/schema';
 
 interface TodoItemProps {
   todo: any;
   assignees?: Assignee[];
+  category?: Category | null;
 }
 
-export default function TodoItem({ todo, assignees = [] }: TodoItemProps) {
+export default function TodoItem({ todo, assignees = [], category }: TodoItemProps) {
   const [isCompleted, setIsCompleted] = useState(todo.isCompleted);
   const [isEditing, setIsEditing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -130,9 +131,11 @@ export default function TodoItem({ todo, assignees = [] }: TodoItemProps) {
   };
 
   const getHoverStyle = () => {
-    // Only apply assignee color hover if there are assignees on this page
+    // No assignees assigned - use purple opaque background
     if (assignees.length === 0 || assignedAssignees.length === 0) {
-      return {};
+      return {
+        '--hover-bg': 'rgb(243 232 255)', // purple-100
+      } as React.CSSProperties;
     }
 
     if (assignedAssignees.length === 1) {
@@ -142,8 +145,8 @@ export default function TodoItem({ todo, assignees = [] }: TodoItemProps) {
       } as React.CSSProperties;
     }
 
-    // Multiple assignees - create gradient with low opacity
-    const colors = assignedAssignees.map((a) => hexToRgba(a.color, 0.12)).join(', ');
+    // Multiple assignees - create gradient with opaque colors
+    const colors = assignedAssignees.map((a) => hexToRgba(a.color, 0.4)).join(', ');
     return {
       '--hover-bg': `linear-gradient(135deg, ${colors})`,
     } as React.CSSProperties;
@@ -229,11 +232,7 @@ export default function TodoItem({ todo, assignees = [] }: TodoItemProps) {
       style={getHoverStyle()}
       className={`group flex items-start gap-3 p-3 rounded-lg transition-all ${
         isPending ? 'opacity-50' : ''
-      } ${
-        assignees.length > 0 && assignedAssignees.length > 0
-          ? '[&:hover]:!bg-[var(--hover-bg)]'
-          : 'hover:bg-purple-50/50'
-      }`}
+      } [&:hover]:!bg-[var(--hover-bg)]`}
     >
       <TodoCheckbox
         checked={isCompleted}
@@ -295,14 +294,31 @@ export default function TodoItem({ todo, assignees = [] }: TodoItemProps) {
           </button>
         )}
 
-        {todo.dueDate && (
-          <div
-            className={`flex items-center gap-1 mt-2 text-xs ${
-              isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'
-            }`}
-          >
-            <Calendar size={12} />
-            {formatDate(todo.dueDate)}
+        {(todo.dueDate || category !== undefined) && (
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            {todo.dueDate && (
+              <div
+                className={`flex items-center gap-1 text-xs ${
+                  isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'
+                }`}
+              >
+                <Calendar size={12} />
+                {formatDate(todo.dueDate)}
+              </div>
+            )}
+            {category && (
+              <span
+                className="px-3 py-1 text-xs font-medium rounded-full text-white"
+                style={{ backgroundColor: category.color }}
+              >
+                {category.name}
+              </span>
+            )}
+            {category === null && (
+              <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-400 text-white">
+                Miscellaneous
+              </span>
+            )}
           </div>
         )}
       </div>

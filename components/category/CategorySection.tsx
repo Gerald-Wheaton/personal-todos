@@ -12,6 +12,8 @@ interface CategorySectionProps {
   todos: Todo[];
   openAccordionId?: number | null;
   onAccordionToggle?: (id: number | null) => void;
+  isShared?: boolean;
+  sharedBy?: string;
 }
 
 export default function CategorySection({
@@ -19,6 +21,8 @@ export default function CategorySection({
   todos,
   openAccordionId,
   onAccordionToggle,
+  isShared = false,
+  sharedBy,
 }: CategorySectionProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const addFormRef = useRef<HTMLDivElement>(null);
@@ -65,6 +69,8 @@ export default function CategorySection({
         isCollapsed={!isOpen}
         onToggleCollapse={toggleCollapse}
         onAddTask={handleAddTask}
+        isShared={isShared}
+        sharedBy={sharedBy}
       />
 
       <AnimatePresence initial={false}>

@@ -10,9 +10,12 @@ import {
   clearSession,
   getPendingCategory,
   clearPendingCategory,
+  getCurrentUser,
 } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { changePasswordSchema } from '@/lib/validations';
 
 export async function signup(formData: FormData) {
   const username = formData.get('username') as string;
@@ -98,6 +101,50 @@ export async function login(formData: FormData) {
 export async function logout() {
   await clearSession();
   redirect('/login');
+}
+
+export async function changePassword(input: {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}) {
+  try {
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    // Validate input
+    const validated = changePasswordSchema.parse(input);
+
+    // Verify current password
+    const isValid = await verifyPassword(validated.currentPassword, user.password);
+
+    if (!isValid) {
+      return { success: false, error: 'Current password is incorrect' };
+    }
+
+    // Hash new password
+    const hashedPassword = await hashPassword(validated.newPassword);
+
+    // Update password
+    await db
+      .update(users)
+      .set({
+        password: hashedPassword,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error changing password:', error);
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.errors[0].message };
+    }
+    return { success: false, error: 'Failed to change password' };
+  }
 }
 
 async function cloneCategoryForUser(categoryId: number, userId: number) {

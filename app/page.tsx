@@ -1,6 +1,6 @@
 import { db } from '@/db';
-import { categories, todos } from '@/db/schema';
-import { desc, asc, isNull, eq, and } from 'drizzle-orm';
+import { categories, todos, categoryShares } from '@/db/schema';
+import { desc, asc, isNull, eq, and, inArray } from 'drizzle-orm';
 import Header from '@/components/layout/Header';
 import ViewContainer from '@/components/view/ViewContainer';
 import QuickAddTodo from '@/components/todo/QuickAddTodo';
@@ -27,6 +27,25 @@ export default async function HomePage() {
       },
     },
   });
+
+  // Fetch categories shared with the user
+  const sharedCategoryIds = await db
+    .select({ categoryId: categoryShares.categoryId })
+    .from(categoryShares)
+    .where(eq(categoryShares.sharedWithUserId, user.id));
+
+  const sharedCategories = sharedCategoryIds.length > 0
+    ? await db.query.categories.findMany({
+        where: inArray(categories.id, sharedCategoryIds.map(({ categoryId }) => categoryId)),
+        with: {
+          todos: {
+            where: eq(todos.isCompleted, false),
+            orderBy: [asc(todos.order), desc(todos.createdAt)],
+          },
+          user: true, // Include owner info for shared categories
+        },
+      })
+    : [];
 
   // Fetch uncategorized incomplete todos only for current user
   const uncategorizedTodos = await db
@@ -73,6 +92,7 @@ export default async function HomePage() {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <ViewContainer
           categoriesWithTodos={categoriesWithTodos}
+          sharedCategories={sharedCategories}
           uncategorizedTodos={uncategorizedTodos}
           categoriesWithCompletedTodos={categoriesWithCompletedTodos}
           uncategorizedCompletedTodos={uncategorizedCompletedTodos}

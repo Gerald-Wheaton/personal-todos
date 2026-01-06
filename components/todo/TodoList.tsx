@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import TodoItem from './TodoItem';
+import { sortTodosByDueDateThenTitle } from '@/lib/utils';
 import type { Todo, Assignee } from '@/db/schema';
 
 interface TodoListProps {
@@ -39,15 +40,15 @@ export default function TodoList({ todos, assignees = [], groupByAssignee = fals
   };
 
   // Sort todos: incomplete first, then completed at the bottom
+  // Within each group, sort by due date then alphabetically
   const sortedTodos = useMemo(() => {
-    return [...todos].sort((a, b) => {
-      // If completion status is different, incomplete comes first
-      if (a.isCompleted !== b.isCompleted) {
-        return a.isCompleted ? 1 : -1;
-      }
-      // If both have same completion status, maintain original order
-      return 0;
-    });
+    const incomplete = todos.filter(t => !t.isCompleted);
+    const completed = todos.filter(t => t.isCompleted);
+    
+    return [
+      ...sortTodosByDueDateThenTitle(incomplete),
+      ...sortTodosByDueDateThenTitle(completed),
+    ];
   }, [todos]);
 
   // Group todos by assignee
@@ -76,7 +77,12 @@ export default function TodoList({ todos, assignees = [], groupByAssignee = fals
       }
     });
 
-    return { assigneeGroups, unassignedTodos };
+    // Sort todos within each assignee group
+    assigneeGroups.forEach((groupTodos, assigneeId) => {
+      assigneeGroups.set(assigneeId, sortTodosByDueDateThenTitle(groupTodos));
+    });
+
+    return { assigneeGroups, unassignedTodos: sortTodosByDueDateThenTitle(unassignedTodos) };
   }, [sortedTodos, groupByAssignee, assignees]);
 
   if (todos.length === 0) {

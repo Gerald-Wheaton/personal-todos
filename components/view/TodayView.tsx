@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import TodoItem from '@/components/todo/TodoItem';
+import { sortTodosByDueDateThenTitle } from '@/lib/utils';
 import type { Category, Todo } from '@/db/schema';
 
 interface TodoWithCategory extends Todo {
@@ -31,12 +32,14 @@ export default function TodayView({
     ),
   ];
 
-  const todayTodos = allTodos.filter((todo) => {
-    if (!todo.dueDate || todo.isCompleted) return false;
-    const dueDate = new Date(todo.dueDate);
-    dueDate.setHours(0, 0, 0, 0);
-    return dueDate.getTime() === today.getTime();
-  });
+  const todayTodos = sortTodosByDueDateThenTitle(
+    allTodos.filter((todo) => {
+      if (!todo.dueDate || todo.isCompleted) return false;
+      const dueDate = new Date(todo.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate.getTime() === today.getTime();
+    })
+  );
 
   return (
     <div className="space-y-4">
@@ -77,26 +80,8 @@ export default function TodayView({
               <motion.div
                 key={todo.id}
                 layout
-                className="relative"
               >
-                <TodoItem todo={todo} />
-                {todo.category && (
-                  <div className="absolute top-3 right-3">
-                    <span
-                      className="px-3 py-1 text-xs font-medium rounded-full text-white"
-                      style={{ backgroundColor: todo.category.color }}
-                    >
-                      {todo.category.name}
-                    </span>
-                  </div>
-                )}
-                {!todo.category && (
-                  <div className="absolute top-3 right-3">
-                    <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-400 text-white">
-                      Miscellaneous
-                    </span>
-                  </div>
-                )}
+                <TodoItem todo={todo} category={todo.category} />
               </motion.div>
             ))}
           </div>

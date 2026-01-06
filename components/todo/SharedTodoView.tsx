@@ -15,24 +15,37 @@ interface SharedTodoViewProps {
   category: Category;
   todos: any[];
   assignees: Assignee[];
+  permission?: string;
 }
 
 export default function SharedTodoView({
   category,
   todos,
   assignees,
+  permission = 'read',
 }: SharedTodoViewProps) {
   const router = useRouter();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showMobileAssignees, setShowMobileAssignees] = useState(false);
   const [groupByAssignee, setGroupByAssignee] = useState(false);
+  const isReadOnly = permission === 'read';
   const completedCount = todos.filter((t) => t.isCompleted).length;
   const lightColor = getLightColor(category.color);
   const completionPercentage =
     todos.length > 0 ? Math.round((completedCount / todos.length) * 100) : 0;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <>
+      {/* Read-only banner */}
+      {isReadOnly && (
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-3">
+          <p className="text-center text-sm text-blue-700">
+            You have read-only access to this category
+          </p>
+        </div>
+      )}
+
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         {/* Back home button */}
@@ -204,6 +217,7 @@ export default function SharedTodoView({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+    </>
   );
 }

@@ -1,8 +1,9 @@
 import { db } from '@/db';
-import { categories, todos, assignees } from '@/db/schema';
+import { categories, todos, assignees, categoryShares } from '@/db/schema';
 import { eq, asc, desc, and } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import SharedTodoView from '@/components/todo/SharedTodoView';
+import { getCurrentUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,12 +19,50 @@ export default async function SharedTodoPage({ params }: PageProps) {
     notFound();
   }
 
+  // Get current user (if any)
+  const user = await getCurrentUser();
+
   // Fetch the category
   const category = await db.query.categories.findFirst({
     where: eq(categories.id, categoryId),
   });
 
   if (!category) {
+    notFound();
+  }
+
+  // Check access permissions
+  let hasAccess = false;
+  let permission = 'none';
+
+  if (user) {
+    // Owner always has access
+    if (category.userId === user.id) {
+      hasAccess = true;
+      permission = 'write';
+    } else {
+      // Check if shared with user
+      const share = await db.query.categoryShares.findFirst({
+        where: and(
+          eq(categoryShares.categoryId, categoryId),
+          eq(categoryShares.sharedWithUserId, user.id)
+        ),
+      });
+
+      if (share) {
+        hasAccess = true;
+        permission = share.permission;
+      }
+    }
+  }
+
+  // For backward compatibility, allow public access for unauthenticated users
+  if (!hasAccess && !user) {
+    hasAccess = true;
+    permission = 'read';
+  }
+
+  if (!hasAccess) {
     notFound();
   }
 
@@ -53,6 +92,7 @@ export default async function SharedTodoPage({ params }: PageProps) {
         category={category}
         todos={categoryTodos}
         assignees={categoryAssignees}
+        permission={permission}
       />
     </main>
   );

@@ -54,9 +54,21 @@ export const todoAssignees = pgTable('todo_assignees', {
   assigneeId: integer('assignee_id').notNull().references(() => assignees.id, { onDelete: 'cascade' }),
 });
 
+// Category Shares table - for permission-based sharing
+export const categoryShares = pgTable('category_shares', {
+  id: serial('id').primaryKey(),
+  categoryId: integer('category_id').notNull().references(() => categories.id, { onDelete: 'cascade' }),
+  ownerId: integer('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sharedWithUserId: integer('shared_with_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  permission: text('permission').notNull().default('read'), // 'read' or 'write'
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   categories: many(categories),
+  ownedShares: many(categoryShares),
 }));
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
@@ -66,6 +78,7 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
   }),
   todos: many(todos),
   assignees: many(assignees),
+  shares: many(categoryShares),
 }));
 
 export const todosRelations = relations(todos, ({ one, many }) => ({
@@ -99,6 +112,21 @@ export const todoAssigneesRelations = relations(todoAssignees, ({ one }) => ({
   }),
 }));
 
+export const categorySharesRelations = relations(categoryShares, ({ one }) => ({
+  category: one(categories, {
+    fields: [categoryShares.categoryId],
+    references: [categories.id],
+  }),
+  owner: one(users, {
+    fields: [categoryShares.ownerId],
+    references: [users.id],
+  }),
+  sharedWithUser: one(users, {
+    fields: [categoryShares.sharedWithUserId],
+    references: [users.id],
+  }),
+}));
+
 // TypeScript types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -110,3 +138,5 @@ export type Assignee = typeof assignees.$inferSelect;
 export type NewAssignee = typeof assignees.$inferInsert;
 export type TodoAssignee = typeof todoAssignees.$inferSelect;
 export type NewTodoAssignee = typeof todoAssignees.$inferInsert;
+export type CategoryShare = typeof categoryShares.$inferSelect;
+export type NewCategoryShare = typeof categoryShares.$inferInsert;

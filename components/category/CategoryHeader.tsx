@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Plus, Share2, Check, ExternalLink, MoreVertical } from 'lucide-react';
+import { Trash2, Plus, Share2, Check, ExternalLink, MoreVertical, Users } from 'lucide-react';
 import { deleteCategory } from '@/app/actions/categories';
 import { getLightColor } from '@/lib/utils';
 import type { Category } from '@/db/schema';
@@ -16,6 +16,8 @@ interface CategoryHeaderProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onAddTask: () => void;
+  isShared?: boolean;
+  sharedBy?: string;
 }
 
 export default function CategoryHeader({
@@ -25,6 +27,8 @@ export default function CategoryHeader({
   isCollapsed,
   onToggleCollapse,
   onAddTask,
+  isShared = false,
+  sharedBy,
 }: CategoryHeaderProps) {
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -102,10 +106,21 @@ export default function CategoryHeader({
               <h2 className="text-xl font-bold text-gray-800">
                 {category.name}
               </h2>
+              {isShared && (
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
+                  <Users size={12} />
+                  Shared
+                </span>
+              )}
               <span className="text-sm text-gray-500">
                 {completedCount}/{todoCount}
               </span>
             </div>
+            {isShared && sharedBy && (
+              <p className="text-xs text-gray-500 mt-1">
+                Shared by <span className="font-medium">{sharedBy}</span>
+              </p>
+            )}
 
             {/* Progress bar */}
             {todoCount > 0 && (
@@ -126,26 +141,28 @@ export default function CategoryHeader({
           {/* Desktop: Show all buttons */}
           {!isMobile && (
             <>
-              {/* Share button */}
-              <button
-                onClick={handleShare}
-                disabled={showCheckmark}
-                className={`p-1.5 sm:p-2 rounded-lg transition-all flex-shrink-0 ${
-                  showCheckmark
-                    ? 'bg-green-500 text-white cursor-not-allowed'
-                    : 'text-blue-600 hover:bg-blue-50'
-                }`}
-                aria-label="Share category"
-              >
-                <motion.div
-                  key={showCheckmark ? 'check' : 'share'}
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ duration: 0.2 }}
+              {/* Share button - only show for owned categories */}
+              {!isShared && (
+                <button
+                  onClick={handleShare}
+                  disabled={showCheckmark}
+                  className={`p-1.5 sm:p-2 rounded-lg transition-all flex-shrink-0 ${
+                    showCheckmark
+                      ? 'bg-green-500 text-white cursor-not-allowed'
+                      : 'text-blue-600 hover:bg-blue-50'
+                  }`}
+                  aria-label="Share category"
                 >
-                  {showCheckmark ? <Check size={16} className="sm:w-[18px] sm:h-[18px]" /> : <Share2 size={16} className="sm:w-[18px] sm:h-[18px]" />}
-                </motion.div>
-              </button>
+                  <motion.div
+                    key={showCheckmark ? 'check' : 'share'}
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {showCheckmark ? <Check size={16} className="sm:w-[18px] sm:h-[18px]" /> : <Share2 size={16} className="sm:w-[18px] sm:h-[18px]" />}
+                  </motion.div>
+                </button>
+              )}
 
               {/* Open in dedicated page button */}
               <Link
@@ -157,17 +174,19 @@ export default function CategoryHeader({
                 <ExternalLink size={16} className="sm:w-[18px] sm:h-[18px]" />
               </Link>
 
-              {/* Delete button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete();
-                }}
-                className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                aria-label="Delete category"
-              >
-                <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
-              </button>
+              {/* Delete button - only show for owned categories */}
+              {!isShared && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete();
+                  }}
+                  className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                  aria-label="Delete category"
+                >
+                  <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
+                </button>
+              )}
 
               {/* Add Task button */}
               <button
@@ -225,28 +244,30 @@ export default function CategoryHeader({
                         }}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {/* Share */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleShare(e);
-                            setShowMobileMenu(false);
-                          }}
-                          disabled={showCheckmark}
-                          className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition-colors disabled:opacity-50"
-                        >
-                          {showCheckmark ? (
-                            <>
-                              <Check size={18} className="text-green-600" />
-                              <span className="text-sm text-green-600 font-medium">Link Copied!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Share2 size={18} className="text-blue-600" />
-                              <span className="text-sm text-gray-700">Share Category</span>
-                            </>
-                          )}
-                        </button>
+                        {/* Share - only show for owned categories */}
+                        {!isShared && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleShare(e);
+                              setShowMobileMenu(false);
+                            }}
+                            disabled={showCheckmark}
+                            className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition-colors disabled:opacity-50"
+                          >
+                            {showCheckmark ? (
+                              <>
+                                <Check size={18} className="text-green-600" />
+                                <span className="text-sm text-green-600 font-medium">Link Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Share2 size={18} className="text-blue-600" />
+                                <span className="text-sm text-gray-700">Share Category</span>
+                              </>
+                            )}
+                          </button>
+                        )}
 
                         {/* Open in dedicated page */}
                         <Link
@@ -274,18 +295,20 @@ export default function CategoryHeader({
                           <span className="text-sm text-gray-700">Add Task</span>
                         </button>
 
-                        {/* Delete */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete();
-                            setShowMobileMenu(false);
-                          }}
-                          className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 size={18} className="text-red-600" />
-                          <span className="text-sm text-red-600">Delete Category</span>
-                        </button>
+                        {/* Delete - only show for owned categories */}
+                        {!isShared && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete();
+                              setShowMobileMenu(false);
+                            }}
+                            className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 size={18} className="text-red-600" />
+                            <span className="text-sm text-red-600">Delete Category</span>
+                          </button>
+                        )}
                       </motion.div>
                     </>
                   )}

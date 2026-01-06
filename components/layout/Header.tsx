@@ -1,10 +1,11 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { CheckSquare, Sparkles, LogOut } from 'lucide-react';
-import AITodoGenerator from '@/components/ai/AITodoGenerator';
-import { logout } from '@/app/actions/auth';
-import type { Category, User } from '@/db/schema';
+import { useState } from "react";
+import { CheckSquare, Sparkles, LogOut, Settings } from "lucide-react";
+import AITodoGenerator from "@/components/ai/AITodoGenerator";
+import { logout } from "@/app/actions/auth";
+import type { Category, User } from "@/db/schema";
+import Link from "next/link";
 
 interface HeaderProps {
   categories: Category[];
@@ -19,7 +20,10 @@ export default function Header({ categories, user }: HeaderProps) {
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-purple-100 shadow-sm">
         <div className="container mx-auto px-4 py-4 max-w-4xl">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+            >
               <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
                 <CheckSquare size={28} className="text-white" />
               </div>
@@ -27,9 +31,11 @@ export default function Header({ categories, user }: HeaderProps) {
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                   Todos
                 </h1>
-                <p className="text-sm text-gray-500">Stay organized, stay productive</p>
+                <p className="text-sm text-gray-500">
+                  Stay organized, stay productive
+                </p>
               </div>
-            </div>
+            </Link>
 
             <div className="flex items-center gap-4">
               <button
@@ -40,14 +46,25 @@ export default function Header({ categories, user }: HeaderProps) {
                 <span className="hidden sm:inline">AI Generate</span>
               </button>
 
+              <Link
+                href="/settings"
+                className="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                aria-label="Settings"
+                title="Settings"
+              >
+                <Settings size={20} />
+              </Link>
+
               <div className="hidden sm:flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-700">{user.username}</p>
+                  <p className="text-sm font-medium text-gray-700">
+                    {user.username}
+                  </p>
                   <p className="text-xs text-gray-500">
-                    {new Date().toLocaleDateString('en-US', {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric',
+                    {new Date().toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
                     })}
                   </p>
                 </div>

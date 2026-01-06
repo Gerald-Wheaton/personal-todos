@@ -50,8 +50,31 @@ export const updateCategorySchema = z.object({
   order: z.number().optional(),
 });
 
+// Password change validation
+export const changePasswordSchema = z.object({
+  currentPassword: z.string()
+    .min(1, 'Current password is required'),
+  newPassword: z.string()
+    .min(6, 'New password must be at least 6 characters'),
+  confirmPassword: z.string()
+    .min(1, 'Please confirm your password'),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+// Share category validation
+export const shareCategorySchema = z.object({
+  categoryId: z.number(),
+  username: z.string()
+    .min(3, 'Username must be at least 3 characters'),
+  permission: z.enum(['read', 'write']).default('read'),
+});
+
 // Type inference
 export type CreateTodoInput = z.infer<typeof createTodoSchema>;
 export type UpdateTodoInput = z.infer<typeof updateTodoSchema>;
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type ShareCategoryInput = z.infer<typeof shareCategorySchema>;

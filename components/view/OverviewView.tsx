@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import TodoItem from '@/components/todo/TodoItem';
+import { sortTodosByDueDateThenTitle } from '@/lib/utils';
 import type { Category, Todo } from '@/db/schema';
 
 interface TodoWithCategory extends Todo {
@@ -18,12 +19,12 @@ export default function OverviewView({
   uncategorizedTodos,
 }: OverviewViewProps) {
   // Flatten all incomplete todos with their category info
-  const allTodos: TodoWithCategory[] = [
+  const allTodos: TodoWithCategory[] = sortTodosByDueDateThenTitle([
     ...uncategorizedTodos.filter(todo => !todo.isCompleted).map((todo) => ({ ...todo, category: null })),
     ...categoriesWithTodos.flatMap((cat) =>
       cat.todos.filter(todo => !todo.isCompleted).map((todo) => ({ ...todo, category: cat }))
     ),
-  ];
+  ]);
 
   return (
     <div className="space-y-4">
@@ -37,26 +38,8 @@ export default function OverviewView({
               <motion.div
                 key={todo.id}
                 layout
-                className="relative"
               >
-                <TodoItem todo={todo} />
-                {todo.category && (
-                  <div className="absolute top-3 right-3">
-                    <span
-                      className="px-3 py-1 text-xs font-medium rounded-full text-white"
-                      style={{ backgroundColor: todo.category.color }}
-                    >
-                      {todo.category.name}
-                    </span>
-                  </div>
-                )}
-                {!todo.category && (
-                  <div className="absolute top-3 right-3">
-                    <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-400 text-white">
-                      Miscellaneous
-                    </span>
-                  </div>
-                )}
+                <TodoItem todo={todo} category={todo.category} />
               </motion.div>
             ))}
           </div>

@@ -70,26 +70,8 @@ export default function HistoryView({
               <motion.div
                 key={todo.id}
                 layout
-                className="relative"
               >
-                <TodoItem todo={todo} />
-                {todo.category && (
-                  <div className="absolute top-3 right-3">
-                    <span
-                      className="px-3 py-1 text-xs font-medium rounded-full text-white"
-                      style={{ backgroundColor: todo.category.color }}
-                    >
-                      {todo.category.name}
-                    </span>
-                  </div>
-                )}
-                {!todo.category && (
-                  <div className="absolute top-3 right-3">
-                    <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-400 text-white">
-                      Miscellaneous
-                    </span>
-                  </div>
-                )}
+                <TodoItem todo={todo} category={todo.category} />
               </motion.div>
             ))}
           </div>
