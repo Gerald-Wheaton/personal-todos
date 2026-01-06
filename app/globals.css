@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    overflow-y: scroll;
+  }
+
   body {
     font-feature-settings: "rlig" 1, "calt" 1;
   }

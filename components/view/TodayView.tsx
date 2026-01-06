@@ -23,16 +23,16 @@ export default function TodayView({
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Filter todos that are due today
+  // Filter incomplete todos that are due today
   const allTodos: TodoWithCategory[] = [
-    ...uncategorizedTodos.map((todo) => ({ ...todo, category: null })),
+    ...uncategorizedTodos.filter(todo => !todo.isCompleted).map((todo) => ({ ...todo, category: null })),
     ...categoriesWithTodos.flatMap((cat) =>
-      cat.todos.map((todo) => ({ ...todo, category: cat }))
+      cat.todos.filter(todo => !todo.isCompleted).map((todo) => ({ ...todo, category: cat }))
     ),
   ];
 
   const todayTodos = allTodos.filter((todo) => {
-    if (!todo.dueDate) return false;
+    if (!todo.dueDate || todo.isCompleted) return false;
     const dueDate = new Date(todo.dueDate);
     dueDate.setHours(0, 0, 0, 0);
     return dueDate.getTime() === today.getTime();

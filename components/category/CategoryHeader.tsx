@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDown, Trash2, Plus } from 'lucide-react';
+import { ChevronDown, Trash2, Plus, Share2, Check } from 'lucide-react';
 import { deleteCategory } from '@/app/actions/categories';
 import { getLightColor } from '@/lib/utils';
 import type { Category } from '@/db/schema';
@@ -23,9 +24,28 @@ export default function CategoryHeader({
   onToggleCollapse,
   onAddTask,
 }: CategoryHeaderProps) {
+  const [showCheckmark, setShowCheckmark] = useState(false);
+
   const handleDelete = async () => {
     if (confirm(`Delete "${category.name}" and all its tasks?`)) {
       await deleteCategory(category.id);
+    }
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    try {
+      const url = `${window.location.origin}/todo/${category.id}`;
+      await navigator.clipboard.writeText(url);
+      setShowCheckmark(true);
+
+      // Revert back to share icon after 2 seconds
+      setTimeout(() => {
+        setShowCheckmark(false);
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
     }
   };
 
@@ -75,17 +95,38 @@ export default function CategoryHeader({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          {/* Share button */}
+          <button
+            onClick={handleShare}
+            disabled={showCheckmark}
+            className={`p-1.5 sm:p-2 rounded-lg transition-all flex-shrink-0 ${
+              showCheckmark
+                ? 'bg-green-500 text-white cursor-not-allowed'
+                : 'text-blue-600 hover:bg-blue-50'
+            }`}
+            aria-label="Share category"
+          >
+            <motion.div
+              key={showCheckmark ? 'check' : 'share'}
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {showCheckmark ? <Check size={16} className="sm:w-[18px] sm:h-[18px]" /> : <Share2 size={16} className="sm:w-[18px] sm:h-[18px]" />}
+            </motion.div>
+          </button>
+
           {/* Delete button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleDelete();
             }}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
             aria-label="Delete category"
           >
-            <Trash2 size={18} />
+            <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
           </button>
 
           {/* Add Task button */}
@@ -94,19 +135,19 @@ export default function CategoryHeader({
               e.stopPropagation();
               onAddTask();
             }}
-            className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+            className="p-1.5 sm:p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex-shrink-0"
             aria-label="Add task"
           >
-            <Plus size={18} />
+            <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />
           </button>
 
           {/* Collapse toggle */}
-          <div className="w-6 h-6 flex items-center justify-center">
+          <div className="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center flex-shrink-0">
             <motion.div
               animate={{ rotate: isCollapsed ? -90 : 0 }}
               transition={{ duration: 0.2 }}
             >
-              <ChevronDown size={24} className="text-gray-600" />
+              <ChevronDown size={20} className="sm:w-6 sm:h-6 text-gray-600" />
             </motion.div>
           </div>
         </div>

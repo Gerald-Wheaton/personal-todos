@@ -1,6 +1,6 @@
 import { db } from '@/db';
 import { categories, todos } from '@/db/schema';
-import { desc, asc, isNull } from 'drizzle-orm';
+import { desc, asc, isNull, eq, and } from 'drizzle-orm';
 import Header from '@/components/layout/Header';
 import ViewContainer from '@/components/view/ViewContainer';
 import QuickAddTodo from '@/components/todo/QuickAddTodo';
@@ -8,22 +8,41 @@ import QuickAddTodo from '@/components/todo/QuickAddTodo';
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  // Fetch all categories with their todos
+  // Fetch all categories with their incomplete todos only
   const categoriesWithTodos = await db.query.categories.findMany({
     orderBy: [asc(categories.order), desc(categories.createdAt)],
     with: {
       todos: {
+        where: eq(todos.isCompleted, false),
         orderBy: [asc(todos.order), desc(todos.createdAt)],
       },
     },
   });
 
-  // Fetch uncategorized todos
+  // Fetch uncategorized incomplete todos only
   const uncategorizedTodos = await db
     .select()
     .from(todos)
-    .where(isNull(todos.categoryId))
+    .where(and(isNull(todos.categoryId), eq(todos.isCompleted, false)))
     .orderBy(asc(todos.order), desc(todos.createdAt));
+
+  // Fetch all categories with their completed todos for History view
+  const categoriesWithCompletedTodos = await db.query.categories.findMany({
+    orderBy: [asc(categories.order), desc(categories.createdAt)],
+    with: {
+      todos: {
+        where: eq(todos.isCompleted, true),
+        orderBy: [desc(todos.completedAt)],
+      },
+    },
+  });
+
+  // Fetch uncategorized completed todos
+  const uncategorizedCompletedTodos = await db
+    .select()
+    .from(todos)
+    .where(and(isNull(todos.categoryId), eq(todos.isCompleted, true)))
+    .orderBy(desc(todos.completedAt));
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50">
@@ -33,6 +52,8 @@ export default async function HomePage() {
         <ViewContainer
           categoriesWithTodos={categoriesWithTodos}
           uncategorizedTodos={uncategorizedTodos}
+          categoriesWithCompletedTodos={categoriesWithCompletedTodos}
+          uncategorizedCompletedTodos={uncategorizedCompletedTodos}
         />
       </div>
 

@@ -2,18 +2,20 @@
 
 import { useState, useRef, useEffect, useTransition } from 'react';
 import { motion } from 'framer-motion';
-import { Trash2, Calendar, Edit2, Check, X } from 'lucide-react';
+import { Trash2, Calendar, Edit2, Check, X, MoreVertical } from 'lucide-react';
 import { updateTodo, deleteTodo } from '@/app/actions/todos';
 import { formatDate } from '@/lib/utils';
 import TodoCheckbox from './TodoCheckbox';
 import DatePicker from '@/components/ui/DatePicker';
-import type { Todo } from '@/db/schema';
+import AssigneeSelector from '@/components/assignee/AssigneeSelector';
+import type { Todo, Assignee } from '@/db/schema';
 
 interface TodoItemProps {
-  todo: Todo;
+  todo: any;
+  assignees?: Assignee[];
 }
 
-export default function TodoItem({ todo }: TodoItemProps) {
+export default function TodoItem({ todo, assignees = [] }: TodoItemProps) {
   const [isCompleted, setIsCompleted] = useState(todo.isCompleted);
   const [isEditing, setIsEditing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -23,8 +25,24 @@ export default function TodoItem({ todo }: TodoItemProps) {
     todo.dueDate ? new Date(todo.dueDate) : undefined
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [isPending, startTransition] = useTransition();
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Extract assigned assignee IDs from todoAssignees
+  const assignedAssigneeIds =
+    todo.todoAssignees?.map((ta: any) => ta.assigneeId) || [];
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (isEditing && titleInputRef.current) {
@@ -97,6 +115,39 @@ export default function TodoItem({ todo }: TodoItemProps) {
 
   // Check if description is long (more than 100 characters on desktop, 50 on mobile)
   const isLongDescription = (todo.description?.length || 0) > 100;
+
+  // Get assignee background for hover (same logic as AssigneeSelector)
+  const assignedAssignees = assignees.filter((a) =>
+    assignedAssigneeIds.includes(a.id)
+  );
+
+  // Convert hex to rgba
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
+  const getHoverStyle = () => {
+    // Only apply assignee color hover if there are assignees on this page
+    if (assignees.length === 0 || assignedAssignees.length === 0) {
+      return {};
+    }
+
+    if (assignedAssignees.length === 1) {
+      // Single assignee - use their color with low opacity
+      return {
+        '--hover-bg': hexToRgba(assignedAssignees[0].color, 0.12),
+      } as React.CSSProperties;
+    }
+
+    // Multiple assignees - create gradient with low opacity
+    const colors = assignedAssignees.map((a) => hexToRgba(a.color, 0.12)).join(', ');
+    return {
+      '--hover-bg': `linear-gradient(135deg, ${colors})`,
+    } as React.CSSProperties;
+  };
 
   if (isEditing) {
     return (
@@ -175,8 +226,13 @@ export default function TodoItem({ todo }: TodoItemProps) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, x: -100, scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-      className={`group flex items-start gap-3 p-3 rounded-lg hover:bg-purple-50/50 transition-colors ${
+      style={getHoverStyle()}
+      className={`group flex items-start gap-3 p-3 rounded-lg transition-all ${
         isPending ? 'opacity-50' : ''
+      } ${
+        assignees.length > 0 && assignedAssignees.length > 0
+          ? '[&:hover]:!bg-[var(--hover-bg)]'
+          : 'hover:bg-purple-50/50'
       }`}
     >
       <TodoCheckbox
@@ -251,23 +307,182 @@ export default function TodoItem({ todo }: TodoItemProps) {
         )}
       </div>
 
-      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={handleEdit}
-          disabled={isPending}
-          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-all disabled:cursor-not-allowed"
-          aria-label="Edit todo"
-        >
-          <Edit2 size={16} />
-        </button>
-        <button
-          onClick={handleDelete}
-          disabled={isPending}
-          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:cursor-not-allowed"
-          aria-label="Delete todo"
-        >
-          <Trash2 size={16} />
-        </button>
+      <div className="flex gap-1 items-center relative">
+        {/* Desktop: Show all buttons on hover */}
+        {!isMobile && assignees.length > 0 && (
+          <>
+            <AssigneeSelector
+              todoId={todo.id}
+              assignedAssigneeIds={assignedAssigneeIds}
+              availableAssignees={assignees}
+            />
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={handleEdit}
+                disabled={isPending}
+                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-all disabled:cursor-not-allowed"
+                aria-label="Edit todo"
+              >
+                <Edit2 size={16} />
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isPending}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:cursor-not-allowed"
+                aria-label="Delete todo"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Desktop without assignees: Show edit/delete on hover */}
+        {!isMobile && assignees.length === 0 && (
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={handleEdit}
+              disabled={isPending}
+              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-all disabled:cursor-not-allowed"
+              aria-label="Edit todo"
+            >
+              <Edit2 size={16} />
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={isPending}
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:cursor-not-allowed"
+              aria-label="Delete todo"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        )}
+
+        {/* Mobile: Show menu button */}
+        {isMobile && assignees.length > 0 && (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMobileMenu(!showMobileMenu);
+              }}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="More options"
+            >
+              <MoreVertical size={18} />
+            </button>
+
+            {/* Mobile menu dropdown */}
+            {showMobileMenu && (
+              <>
+                {/* Backdrop */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowMobileMenu(false)}
+                />
+
+                {/* Dropdown */}
+                <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 min-w-[160px]">
+                  <div className="flex flex-col">
+                    {/* Assignee selector inline */}
+                    <div className="px-2 py-1">
+                      <AssigneeSelector
+                        todoId={todo.id}
+                        assignedAssigneeIds={assignedAssigneeIds}
+                        availableAssignees={assignees}
+                      />
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit();
+                        setShowMobileMenu(false);
+                      }}
+                      disabled={isPending}
+                      className="w-full px-4 py-2 flex items-center gap-3 text-left text-purple-600 hover:bg-purple-50 transition-colors disabled:opacity-50"
+                    >
+                      <Edit2 size={16} />
+                      <span className="text-sm">Edit</span>
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete();
+                        setShowMobileMenu(false);
+                      }}
+                      disabled={isPending}
+                      className="w-full px-4 py-2 flex items-center gap-3 text-left text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 size={16} />
+                      <span className="text-sm">Delete</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Mobile without assignees: Show menu button */}
+        {isMobile && assignees.length === 0 && (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMobileMenu(!showMobileMenu);
+              }}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="More options"
+            >
+              <MoreVertical size={18} />
+            </button>
+
+            {/* Mobile menu dropdown */}
+            {showMobileMenu && (
+              <>
+                {/* Backdrop */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowMobileMenu(false)}
+                />
+
+                {/* Dropdown */}
+                <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 min-w-[160px]">
+                  <div className="flex flex-col">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit();
+                        setShowMobileMenu(false);
+                      }}
+                      disabled={isPending}
+                      className="w-full px-4 py-2 flex items-center gap-3 text-left text-purple-600 hover:bg-purple-50 transition-colors disabled:opacity-50"
+                    >
+                      <Edit2 size={16} />
+                      <span className="text-sm">Edit</span>
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete();
+                        setShowMobileMenu(false);
+                      }}
+                      disabled={isPending}
+                      className="w-full px-4 py-2 flex items-center gap-3 text-left text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 size={16} />
+                      <span className="text-sm">Delete</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
     </motion.div>
   );

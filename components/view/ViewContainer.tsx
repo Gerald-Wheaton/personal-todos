@@ -12,11 +12,15 @@ import type { Category, Todo } from '@/db/schema';
 interface ViewContainerProps {
   categoriesWithTodos: (Category & { todos: Todo[] })[];
   uncategorizedTodos: Todo[];
+  categoriesWithCompletedTodos: (Category & { todos: Todo[] })[];
+  uncategorizedCompletedTodos: Todo[];
 }
 
 export default function ViewContainer({
   categoriesWithTodos,
   uncategorizedTodos,
+  categoriesWithCompletedTodos,
+  uncategorizedCompletedTodos,
 }: ViewContainerProps) {
   const [currentView, setCurrentView] = useState<ViewType>('categories');
   const [openAccordionId, setOpenAccordionId] = useState<number | null>(null);
@@ -118,8 +122,8 @@ export default function ViewContainer({
 
       {currentView === 'history' && (
         <HistoryView
-          categoriesWithTodos={categoriesWithTodos}
-          uncategorizedTodos={uncategorizedTodos}
+          categoriesWithTodos={categoriesWithCompletedTodos}
+          uncategorizedTodos={uncategorizedCompletedTodos}
         />
       )}
       </div>

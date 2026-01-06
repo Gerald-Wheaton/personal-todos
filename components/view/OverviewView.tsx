@@ -17,11 +17,11 @@ export default function OverviewView({
   categoriesWithTodos,
   uncategorizedTodos,
 }: OverviewViewProps) {
-  // Flatten all todos with their category info
+  // Flatten all incomplete todos with their category info
   const allTodos: TodoWithCategory[] = [
-    ...uncategorizedTodos.map((todo) => ({ ...todo, category: null })),
+    ...uncategorizedTodos.filter(todo => !todo.isCompleted).map((todo) => ({ ...todo, category: null })),
     ...categoriesWithTodos.flatMap((cat) =>
-      cat.todos.map((todo) => ({ ...todo, category: cat }))
+      cat.todos.filter(todo => !todo.isCompleted).map((todo) => ({ ...todo, category: cat }))
     ),
   ];
 

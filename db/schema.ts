@@ -27,15 +27,52 @@ export const todos = pgTable('todos', {
   completedAt: timestamp('completed_at'),
 });
 
+// Assignees table
+export const assignees = pgTable('assignees', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  color: text('color').notNull(), // Hex color for assignee
+  categoryId: integer('category_id').references(() => categories.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Todo-Assignee junction table (many-to-many)
+export const todoAssignees = pgTable('todo_assignees', {
+  todoId: integer('todo_id').notNull().references(() => todos.id, { onDelete: 'cascade' }),
+  assigneeId: integer('assignee_id').notNull().references(() => assignees.id, { onDelete: 'cascade' }),
+});
+
 // Relations
 export const categoriesRelations = relations(categories, ({ many }) => ({
   todos: many(todos),
+  assignees: many(assignees),
 }));
 
-export const todosRelations = relations(todos, ({ one }) => ({
+export const todosRelations = relations(todos, ({ one, many }) => ({
   category: one(categories, {
     fields: [todos.categoryId],
     references: [categories.id],
+  }),
+  todoAssignees: many(todoAssignees),
+}));
+
+export const assigneesRelations = relations(assignees, ({ one, many }) => ({
+  category: one(categories, {
+    fields: [assignees.categoryId],
+    references: [categories.id],
+  }),
+  todoAssignees: many(todoAssignees),
+}));
+
+export const todoAssigneesRelations = relations(todoAssignees, ({ one }) => ({
+  todo: one(todos, {
+    fields: [todoAssignees.todoId],
+    references: [todos.id],
+  }),
+  assignee: one(assignees, {
+    fields: [todoAssignees.assigneeId],
+    references: [assignees.id],
   }),
 }));
 
@@ -44,3 +81,7 @@ export type Category = typeof categories.$inferSelect;
 export type NewCategory = typeof categories.$inferInsert;
 export type Todo = typeof todos.$inferSelect;
 export type NewTodo = typeof todos.$inferInsert;
+export type Assignee = typeof assignees.$inferSelect;
+export type NewAssignee = typeof assignees.$inferInsert;
+export type TodoAssignee = typeof todoAssignees.$inferSelect;
+export type NewTodoAssignee = typeof todoAssignees.$inferInsert;
