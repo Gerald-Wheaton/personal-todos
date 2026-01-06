@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckSquare, Sparkles } from 'lucide-react';
+import { CheckSquare, Sparkles, LogOut } from 'lucide-react';
 import AITodoGenerator from '@/components/ai/AITodoGenerator';
-import type { Category } from '@/db/schema';
+import { logout } from '@/app/actions/auth';
+import type { Category, User } from '@/db/schema';
 
 interface HeaderProps {
   categories: Category[];
+  user: User;
 }
 
-export default function Header({ categories }: HeaderProps) {
+export default function Header({ categories, user }: HeaderProps) {
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
   return (
@@ -38,15 +40,36 @@ export default function Header({ categories }: HeaderProps) {
                 <span className="hidden sm:inline">AI Generate</span>
               </button>
 
-              <div className="text-right hidden sm:block">
-                <p className="text-sm text-gray-500">
-                  {new Date().toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </p>
+              <div className="hidden sm:flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-700">{user.username}</p>
+                  <p className="text-xs text-gray-500">
+                    {new Date().toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => logout()}
+                  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  aria-label="Logout"
+                  title="Logout"
+                >
+                  <LogOut size={20} />
+                </button>
               </div>
+
+              {/* Mobile logout button */}
+              <button
+                onClick={() => logout()}
+                className="sm:hidden p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                aria-label="Logout"
+              >
+                <LogOut size={20} />
+              </button>
             </div>
           </div>
         </div>

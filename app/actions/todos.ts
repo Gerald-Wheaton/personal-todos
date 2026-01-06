@@ -6,15 +6,22 @@ import { todos } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createTodoSchema, updateTodoSchema } from '@/lib/validations';
 import type { CreateTodoInput, UpdateTodoInput } from '@/lib/validations';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function createTodo(input: CreateTodoInput) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
     const validated = createTodoSchema.parse(input);
 
     const [newTodo] = await db.insert(todos).values({
       ...validated,
       dueDate: validated.dueDate || null,
       categoryId: validated.categoryId || null,
+      userId: user.id,
     }).returning();
 
     revalidatePath('/');

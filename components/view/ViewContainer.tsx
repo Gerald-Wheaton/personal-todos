@@ -52,6 +52,7 @@ export default function ViewContainer({
                 icon: null,
                 order: 0,
                 isCollapsed: false,
+                userId: null,
                 createdAt: new Date(),
                 updatedAt: new Date(),
               }}

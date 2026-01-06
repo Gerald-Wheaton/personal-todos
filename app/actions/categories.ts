@@ -6,12 +6,21 @@ import { categories } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createCategorySchema, updateCategorySchema } from '@/lib/validations';
 import type { CreateCategoryInput, UpdateCategoryInput } from '@/lib/validations';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function createCategory(input: CreateCategoryInput) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
     const validated = createCategorySchema.parse(input);
 
-    const [newCategory] = await db.insert(categories).values(validated).returning();
+    const [newCategory] = await db
+      .insert(categories)
+      .values({ ...validated, userId: user.id })
+      .returning();
 
     revalidatePath('/');
     return { success: true, data: newCategory };

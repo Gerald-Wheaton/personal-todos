@@ -4,12 +4,21 @@ import { desc, asc, isNull, eq, and } from 'drizzle-orm';
 import Header from '@/components/layout/Header';
 import ViewContainer from '@/components/view/ViewContainer';
 import QuickAddTodo from '@/components/todo/QuickAddTodo';
+import { getCurrentUser } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  // Fetch all categories with their incomplete todos only
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
+  // Fetch user's categories with their incomplete todos only
   const categoriesWithTodos = await db.query.categories.findMany({
+    where: eq(categories.userId, user.id),
     orderBy: [asc(categories.order), desc(categories.createdAt)],
     with: {
       todos: {
@@ -19,15 +28,22 @@ export default async function HomePage() {
     },
   });
 
-  // Fetch uncategorized incomplete todos only
+  // Fetch uncategorized incomplete todos only for current user
   const uncategorizedTodos = await db
     .select()
     .from(todos)
-    .where(and(isNull(todos.categoryId), eq(todos.isCompleted, false)))
+    .where(
+      and(
+        isNull(todos.categoryId),
+        eq(todos.isCompleted, false),
+        eq(todos.userId, user.id)
+      )
+    )
     .orderBy(asc(todos.order), desc(todos.createdAt));
 
-  // Fetch all categories with their completed todos for History view
+  // Fetch user's categories with their completed todos for History view
   const categoriesWithCompletedTodos = await db.query.categories.findMany({
+    where: eq(categories.userId, user.id),
     orderBy: [asc(categories.order), desc(categories.createdAt)],
     with: {
       todos: {
@@ -37,16 +53,22 @@ export default async function HomePage() {
     },
   });
 
-  // Fetch uncategorized completed todos
+  // Fetch uncategorized completed todos for current user
   const uncategorizedCompletedTodos = await db
     .select()
     .from(todos)
-    .where(and(isNull(todos.categoryId), eq(todos.isCompleted, true)))
+    .where(
+      and(
+        isNull(todos.categoryId),
+        eq(todos.isCompleted, true),
+        eq(todos.userId, user.id)
+      )
+    )
     .orderBy(desc(todos.completedAt));
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50">
-      <Header categories={categoriesWithTodos} />
+      <Header categories={categoriesWithTodos} user={user} />
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <ViewContainer

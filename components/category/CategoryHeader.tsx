@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronDown, Trash2, Plus, Share2, Check } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Trash2, Plus, Share2, Check, ExternalLink, MoreVertical } from 'lucide-react';
 import { deleteCategory } from '@/app/actions/categories';
 import { getLightColor } from '@/lib/utils';
 import type { Category } from '@/db/schema';
+import Link from 'next/link';
 
 interface CategoryHeaderProps {
   category: Category;
@@ -25,6 +27,31 @@ export default function CategoryHeader({
   onAddTask,
 }: CategoryHeaderProps) {
   const [showCheckmark, setShowCheckmark] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [popoverPosition, setPopoverPosition] = useState({ top: 0, right: 0 });
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Calculate popover position when menu opens
+  useEffect(() => {
+    if (showMobileMenu && menuButtonRef.current) {
+      const rect = menuButtonRef.current.getBoundingClientRect();
+      setPopoverPosition({
+        top: rect.bottom + 8, // 8px = mt-2 equivalent
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [showMobileMenu]);
 
   const handleDelete = async () => {
     if (confirm(`Delete "${category.name}" and all its tasks?`)) {
@@ -96,60 +123,177 @@ export default function CategoryHeader({
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
-          {/* Share button */}
-          <button
-            onClick={handleShare}
-            disabled={showCheckmark}
-            className={`p-1.5 sm:p-2 rounded-lg transition-all flex-shrink-0 ${
-              showCheckmark
-                ? 'bg-green-500 text-white cursor-not-allowed'
-                : 'text-blue-600 hover:bg-blue-50'
-            }`}
-            aria-label="Share category"
-          >
-            <motion.div
-              key={showCheckmark ? 'check' : 'share'}
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              {showCheckmark ? <Check size={16} className="sm:w-[18px] sm:h-[18px]" /> : <Share2 size={16} className="sm:w-[18px] sm:h-[18px]" />}
-            </motion.div>
-          </button>
+          {/* Desktop: Show all buttons */}
+          {!isMobile && (
+            <>
+              {/* Share button */}
+              <button
+                onClick={handleShare}
+                disabled={showCheckmark}
+                className={`p-1.5 sm:p-2 rounded-lg transition-all flex-shrink-0 ${
+                  showCheckmark
+                    ? 'bg-green-500 text-white cursor-not-allowed'
+                    : 'text-blue-600 hover:bg-blue-50'
+                }`}
+                aria-label="Share category"
+              >
+                <motion.div
+                  key={showCheckmark ? 'check' : 'share'}
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {showCheckmark ? <Check size={16} className="sm:w-[18px] sm:h-[18px]" /> : <Share2 size={16} className="sm:w-[18px] sm:h-[18px]" />}
+                </motion.div>
+              </button>
 
-          {/* Delete button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete();
-            }}
-            className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-            aria-label="Delete category"
-          >
-            <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
-          </button>
+              {/* Open in dedicated page button */}
+              <Link
+                href={`/todo/${category.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="p-1.5 sm:p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex-shrink-0"
+                aria-label="Open in dedicated page"
+              >
+                <ExternalLink size={16} className="sm:w-[18px] sm:h-[18px]" />
+              </Link>
 
-          {/* Add Task button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddTask();
-            }}
-            className="p-1.5 sm:p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex-shrink-0"
-            aria-label="Add task"
-          >
-            <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />
-          </button>
+              {/* Delete button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete();
+                }}
+                className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                aria-label="Delete category"
+              >
+                <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
+              </button>
 
-          {/* Collapse toggle */}
-          <div className="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center flex-shrink-0">
-            <motion.div
-              animate={{ rotate: isCollapsed ? -90 : 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <ChevronDown size={20} className="sm:w-6 sm:h-6 text-gray-600" />
-            </motion.div>
-          </div>
+              {/* Add Task button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddTask();
+                }}
+                className="p-1.5 sm:p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex-shrink-0"
+                aria-label="Add task"
+              >
+                <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />
+              </button>
+            </>
+          )}
+
+          {/* Mobile: Show menu button */}
+          {isMobile && (
+            <>
+              <button
+                ref={menuButtonRef}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMobileMenu(!showMobileMenu);
+                }}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="More options"
+              >
+                <MoreVertical size={20} />
+              </button>
+
+              {/* Mobile menu popover - rendered via portal */}
+              {typeof window !== 'undefined' && createPortal(
+                <AnimatePresence>
+                  {showMobileMenu && (
+                    <>
+                      {/* Backdrop */}
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMobileMenu(false);
+                        }}
+                      />
+
+                      {/* Popover */}
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        transition={{ duration: 0.15 }}
+                        className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 min-w-[200px]"
+                        style={{
+                          top: `${popoverPosition.top}px`,
+                          right: `${popoverPosition.right}px`,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Share */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShare(e);
+                            setShowMobileMenu(false);
+                          }}
+                          disabled={showCheckmark}
+                          className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        >
+                          {showCheckmark ? (
+                            <>
+                              <Check size={18} className="text-green-600" />
+                              <span className="text-sm text-green-600 font-medium">Link Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Share2 size={18} className="text-blue-600" />
+                              <span className="text-sm text-gray-700">Share Category</span>
+                            </>
+                          )}
+                        </button>
+
+                        {/* Open in dedicated page */}
+                        <Link
+                          href={`/todo/${category.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowMobileMenu(false);
+                          }}
+                          className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition-colors"
+                        >
+                          <ExternalLink size={18} className="text-purple-600" />
+                          <span className="text-sm text-gray-700">Open Full View</span>
+                        </Link>
+
+                        {/* Add Task */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddTask();
+                            setShowMobileMenu(false);
+                          }}
+                          className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition-colors"
+                        >
+                          <Plus size={18} className="text-purple-600" />
+                          <span className="text-sm text-gray-700">Add Task</span>
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete();
+                            setShowMobileMenu(false);
+                          }}
+                          className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 size={18} className="text-red-600" />
+                          <span className="text-sm text-red-600">Delete Category</span>
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>,
+                document.body
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
