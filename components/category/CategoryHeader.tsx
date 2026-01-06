@@ -1,8 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ChevronDown, MoreVertical, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDown, Trash2, Plus } from 'lucide-react';
 import { deleteCategory } from '@/app/actions/categories';
 import { getLightColor } from '@/lib/utils';
 import type { Category } from '@/db/schema';
@@ -13,6 +12,7 @@ interface CategoryHeaderProps {
   completedCount: number;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  onAddTask: () => void;
 }
 
 export default function CategoryHeader({
@@ -21,9 +21,8 @@ export default function CategoryHeader({
   completedCount,
   isCollapsed,
   onToggleCollapse,
+  onAddTask,
 }: CategoryHeaderProps) {
-  const [showMenu, setShowMenu] = useState(false);
-
   const handleDelete = async () => {
     if (confirm(`Delete "${category.name}" and all its tasks?`)) {
       await deleteCategory(category.id);
@@ -77,40 +76,39 @@ export default function CategoryHeader({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* More options */}
+          {/* Delete button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setShowMenu(!showMenu);
+              handleDelete();
             }}
-            className="p-2 text-gray-600 hover:bg-white/50 rounded-lg transition-colors relative"
+            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            aria-label="Delete category"
           >
-            <MoreVertical size={20} />
+            <Trash2 size={18} />
+          </button>
 
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10 min-w-[150px]">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete();
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-2"
-                >
-                  <Trash2 size={16} />
-                  Delete
-                </button>
-              </div>
-            )}
+          {/* Add Task button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddTask();
+            }}
+            className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+            aria-label="Add task"
+          >
+            <Plus size={18} />
           </button>
 
           {/* Collapse toggle */}
-          <motion.div
-            animate={{ rotate: isCollapsed ? -90 : 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <ChevronDown size={24} className="text-gray-600" />
-          </motion.div>
+          <div className="w-6 h-6 flex items-center justify-center">
+            <motion.div
+              animate={{ rotate: isCollapsed ? -90 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown size={24} className="text-gray-600" />
+            </motion.div>
+          </div>
         </div>
       </div>
     </div>

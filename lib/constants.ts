@@ -31,5 +31,9 @@ export const THEME_COLORS = {
     { name: 'Lavender', value: '#A78BFA', light: '#F3F0FF' },
     { name: 'Rose', value: '#F472B6', light: '#FDF2F8' },
     { name: 'Ocean', value: '#3B82F6', light: '#EFF6FF' },
+    { name: 'Plum', value: '#9333EA', light: '#F3E8FF' },
+    { name: 'Crimson', value: '#DC2626', light: '#FEE2E2' },
+    { name: 'Teal', value: '#14B8A6', light: '#CCFBF1' },
+    { name: 'Indigo', value: '#4F46E5', light: '#E0E7FF' },
   ],
 };

@@ -11,23 +11,39 @@ import type { Category, Todo } from '@/db/schema';
 interface CategorySectionProps {
   category: Category;
   todos: Todo[];
+  openAccordionId?: number | null;
+  onAccordionToggle?: (id: number | null) => void;
 }
 
 export default function CategorySection({
   category,
   todos,
+  openAccordionId,
+  onAccordionToggle,
 }: CategorySectionProps) {
-  const [isCollapsed, setIsCollapsed] = useState(category.isCollapsed);
   const [showAddForm, setShowAddForm] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const toggleCollapse = () => {
-    const newState = !isCollapsed;
-    setIsCollapsed(newState); // Optimistic update
+  // Determine if this accordion is collapsed based on global state
+  const isCollapsed = openAccordionId !== null && openAccordionId !== category.id;
 
-    startTransition(async () => {
-      await updateCategory(category.id, { isCollapsed: newState });
-    });
+  const toggleCollapse = () => {
+    if (onAccordionToggle) {
+      // If this accordion is currently open, close it; otherwise, open it
+      const newId = isCollapsed ? category.id : null;
+      onAccordionToggle(newId);
+
+      // Also update the database
+      startTransition(async () => {
+        await updateCategory(category.id, { isCollapsed: isCollapsed });
+      });
+    } else {
+      // Fallback to old behavior if no global state
+      const newState = !isCollapsed;
+      startTransition(async () => {
+        await updateCategory(category.id, { isCollapsed: newState });
+      });
+    }
   };
 
   const completedCount = todos.filter((t) => t.isCompleted).length;
@@ -46,6 +62,7 @@ export default function CategorySection({
         completedCount={completedCount}
         isCollapsed={isCollapsed}
         onToggleCollapse={toggleCollapse}
+        onAddTask={() => setShowAddForm(true)}
       />
 
       <AnimatePresence initial={false}>
@@ -59,19 +76,12 @@ export default function CategorySection({
             <div className="p-4 space-y-2">
               <TodoList todos={todos} />
 
-              {showAddForm ? (
+              {showAddForm && (
                 <AddTodoInline
                   categoryId={category.id}
                   onCancel={() => setShowAddForm(false)}
                   onSuccess={() => setShowAddForm(false)}
                 />
-              ) : (
-                <button
-                  onClick={() => setShowAddForm(true)}
-                  className="w-full py-2 px-4 text-left text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                >
-                  + Add task
-                </button>
               )}
             </div>
           </motion.div>
