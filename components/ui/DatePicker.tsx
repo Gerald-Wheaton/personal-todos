@@ -15,7 +15,13 @@ const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
   ({ value, onChange, placeholder = 'Select date', className }, ref) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const dateValue = e.target.value;
-      onChange(dateValue ? new Date(dateValue) : undefined);
+      if (dateValue) {
+        // Parse YYYY-MM-DD and create Date at local midnight
+        const [year, month, day] = dateValue.split('-').map(Number);
+        onChange(new Date(year, month - 1, day)); // month is 0-indexed
+      } else {
+        onChange(undefined);
+      }
     };
 
     const formatDateForInput = (date?: Date): string => {
