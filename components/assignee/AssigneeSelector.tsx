@@ -1,9 +1,13 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { Check, Users } from 'lucide-react';
-import { assignTodoToAssignee, unassignTodoFromAssignee } from '@/app/actions/assignees';
-import type { Assignee } from '@/db/schema';
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { Check, Users } from "lucide-react";
+import {
+  assignTodoToAssignee,
+  unassignTodoFromAssignee,
+} from "@/app/actions/assignees";
+import type { Assignee } from "@/db/schema";
 
 interface AssigneeSelectorProps {
   todoId: number;
@@ -20,6 +24,12 @@ export default function AssigneeSelector({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [positionAbove, setPositionAbove] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top?: number;
+    bottom?: number;
+    left?: number;
+    right?: number;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -33,8 +43,8 @@ export default function AssigneeSelector({
       setIsMobile(window.innerWidth < 1024);
     };
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   const assignedAssignees = availableAssignees.filter((a) =>
@@ -84,11 +94,15 @@ export default function AssigneeSelector({
     if (!isMobile) {
       // Check if mouse is moving to the dropdown first
       const relatedTarget = e.relatedTarget as Node | null;
-      if (dropdownRef.current && relatedTarget && dropdownRef.current.contains(relatedTarget)) {
+      if (
+        dropdownRef.current &&
+        relatedTarget &&
+        dropdownRef.current.contains(relatedTarget)
+      ) {
         // Mouse is moving to dropdown, keep button hover state until dropdown takes over
         return;
       }
-      
+
       isHoveringButtonRef.current = false;
       // Schedule close - if mouse enters dropdown, it will cancel
       scheduleClose();
@@ -111,7 +125,11 @@ export default function AssigneeSelector({
       isHoveringDropdownRef.current = false;
       // Check if mouse is moving to the button
       const relatedTarget = e.relatedTarget as Node | null;
-      if (buttonRef.current && relatedTarget && buttonRef.current.contains(relatedTarget)) {
+      if (
+        buttonRef.current &&
+        relatedTarget &&
+        buttonRef.current.contains(relatedTarget)
+      ) {
         // Mouse is moving to button, don't close
         return;
       }
@@ -121,29 +139,129 @@ export default function AssigneeSelector({
     }
   };
 
-  // Calculate dropdown position when it opens
+  // Check for overflow proactively when dropdown opens (before rendering)
   useEffect(() => {
-    if (showDropdown && containerRef.current && dropdownRef.current && !isMobile) {
+    if (showDropdown && containerRef.current) {
+      // Check if dropdown would be clipped by checking if parent has overflow-hidden
+      let parentHasOverflow = false;
+      let currentElement: HTMLElement | null =
+        containerRef.current.parentElement;
+      while (currentElement) {
+        const style = window.getComputedStyle(currentElement);
+        if (
+          style.overflow === "hidden" ||
+          style.overflowY === "hidden" ||
+          style.overflowX === "hidden"
+        ) {
+          parentHasOverflow = true;
+          break;
+        }
+        currentElement = currentElement.parentElement;
+      }
+
+      // If overflow detected, calculate position immediately
+      if (parentHasOverflow && containerRef.current) {
+        const buttonRect = containerRef.current.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const dropdownWidth = 200; // min-w-[200px]
+
+        // Calculate horizontal position (right-align with button)
+        let left = buttonRect.right - dropdownWidth;
+        if (left < 8) left = 8;
+        if (left + dropdownWidth > viewportWidth - 8) {
+          left = viewportWidth - dropdownWidth - 8;
+        }
+
+        // Default to below, will be adjusted after render
+        setDropdownPosition({
+          top: buttonRect.bottom + 8,
+          left,
+        });
+        setPositionAbove(false);
+      }
+    }
+  }, [showDropdown]);
+
+  // Calculate dropdown position when it opens (refine position after render)
+  useEffect(() => {
+    if (showDropdown && containerRef.current && dropdownRef.current) {
       // Use requestAnimationFrame to ensure dropdown is rendered
       requestAnimationFrame(() => {
         if (!containerRef.current || !dropdownRef.current) return;
-        
+
         const containerRect = containerRef.current.getBoundingClientRect();
         const dropdownRect = dropdownRef.current.getBoundingClientRect();
         const viewportHeight = window.innerHeight;
-        
+        const viewportWidth = window.innerWidth;
+
         const spaceBelow = viewportHeight - containerRect.bottom;
         const spaceAbove = containerRect.top;
         const dropdownHeight = dropdownRect.height;
         const requiredSpace = dropdownHeight + 8; // mt-2 = 8px
-        
-        // Position above if not enough space below, but enough space above
-        if (spaceBelow < requiredSpace && spaceAbove > spaceBelow) {
-          setPositionAbove(true);
+
+        // Check if dropdown would be clipped by checking if parent has overflow-hidden
+        let parentHasOverflow = false;
+        let currentElement: HTMLElement | null =
+          containerRef.current.parentElement;
+        while (currentElement) {
+          const style = window.getComputedStyle(currentElement);
+          if (
+            style.overflow === "hidden" ||
+            style.overflowY === "hidden" ||
+            style.overflowX === "hidden"
+          ) {
+            parentHasOverflow = true;
+            break;
+          }
+          currentElement = currentElement.parentElement;
+        }
+
+        // Use fixed positioning if parent has overflow-hidden or if near viewport edges
+        // This applies to both desktop and mobile
+        if (
+          parentHasOverflow ||
+          spaceBelow < requiredSpace ||
+          spaceAbove < requiredSpace
+        ) {
+          const buttonRect = containerRef.current.getBoundingClientRect();
+          const dropdownWidth = dropdownRect.width || 200; // min-w-[200px]
+
+          // Calculate horizontal position (right-align with button)
+          let left = buttonRect.right - dropdownWidth;
+          if (left < 8) left = 8; // Add some margin from viewport edge
+          if (left + dropdownWidth > viewportWidth - 8) {
+            left = viewportWidth - dropdownWidth - 8;
+          }
+
+          // Calculate vertical position
+          if (spaceBelow < requiredSpace && spaceAbove > spaceBelow) {
+            // Position above
+            setDropdownPosition({
+              bottom: viewportHeight - buttonRect.top + 8,
+              left,
+            });
+            setPositionAbove(true);
+          } else {
+            // Position below
+            setDropdownPosition({
+              top: buttonRect.bottom + 8,
+              left,
+            });
+            setPositionAbove(false);
+          }
         } else {
-          setPositionAbove(false);
+          // Use relative positioning (absolute within container)
+          setDropdownPosition(null);
+          // Position above if not enough space below, but enough space above
+          if (spaceBelow < requiredSpace && spaceAbove > spaceBelow) {
+            setPositionAbove(true);
+          } else {
+            setPositionAbove(false);
+          }
         }
       });
+    } else {
+      setDropdownPosition(null);
     }
   }, [showDropdown, isMobile, availableAssignees.length]);
 
@@ -165,18 +283,15 @@ export default function AssigneeSelector({
 
   // Generate gradient for multiple assignees
   const getAssigneeBackground = () => {
-    if (assignedAssignees.length === 0) return 'transparent';
+    if (assignedAssignees.length === 0) return "transparent";
     if (assignedAssignees.length === 1) return assignedAssignees[0].color;
 
-    const colors = assignedAssignees.map((a) => a.color).join(', ');
+    const colors = assignedAssignees.map((a) => a.color).join(", ");
     return `linear-gradient(135deg, ${colors})`;
   };
 
   return (
-    <div
-      ref={containerRef}
-      className="relative"
-    >
+    <div ref={containerRef} className="relative">
       <button
         ref={buttonRef}
         onClick={handleClick}
@@ -195,64 +310,80 @@ export default function AssigneeSelector({
         )}
       </button>
 
-      {showDropdown && (
-        <>
-          {/* Backdrop - only for mobile clicks, not hover */}
-          {isMobile && (
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setShowDropdown(false)}
-            />
-          )}
+      {showDropdown &&
+        (() => {
+          const dropdownContent = (
+            <>
+              {/* Backdrop - only for mobile clicks, not hover */}
+              {isMobile && (
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowDropdown(false)}
+                />
+              )}
 
-          {/* Dropdown */}
-          <div
-            ref={dropdownRef}
-            className={`absolute right-0 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20 min-w-[200px] ${
-              positionAbove ? 'bottom-full mb-2' : 'top-full mt-2'
-            }`}
-            onMouseEnter={handleDropdownMouseEnter}
-            onMouseLeave={handleDropdownMouseLeave}
-          >
-            <div className="px-3 py-2 border-b border-gray-200">
-              <p className="text-xs font-semibold text-gray-600 uppercase">
-                Assign to
-              </p>
-            </div>
+              {/* Dropdown */}
+              <div
+                ref={dropdownRef}
+                className={`bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 min-w-[200px] ${
+                  dropdownPosition
+                    ? "fixed"
+                    : `absolute right-0 ${
+                        positionAbove ? "bottom-full mb-2" : "top-full mt-2"
+                      }`
+                }`}
+                style={dropdownPosition || undefined}
+                onMouseEnter={handleDropdownMouseEnter}
+                onMouseLeave={handleDropdownMouseLeave}
+              >
+                <div className="px-3 py-2 border-b border-gray-200">
+                  <p className="text-xs font-semibold text-gray-600 uppercase">
+                    Assign to
+                  </p>
+                </div>
 
-            {availableAssignees.length === 0 ? (
-              <div className="px-3 py-4 text-sm text-gray-500 text-center">
-                No assignees available
+                {availableAssignees.length === 0 ? (
+                  <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                    No assignees available
+                  </div>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto">
+                    {availableAssignees.map((assignee) => (
+                      <button
+                        key={assignee.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleAssignee(assignee.id);
+                        }}
+                        disabled={isUpdating}
+                        className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                      >
+                        <div
+                          className="w-6 h-6 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: assignee.color }}
+                        />
+                        <span className="flex-1 text-left text-sm text-gray-800">
+                          {assignee.name}
+                        </span>
+                        {assignedAssigneeIds.includes(assignee.id) && (
+                          <Check size={16} className="text-purple-600" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="max-h-64 overflow-y-auto">
-                {availableAssignees.map((assignee) => (
-                  <button
-                    key={assignee.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleAssignee(assignee.id);
-                    }}
-                    disabled={isUpdating}
-                    className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-50 transition-colors disabled:opacity-50"
-                  >
-                    <div
-                      className="w-6 h-6 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: assignee.color }}
-                    />
-                    <span className="flex-1 text-left text-sm text-gray-800">
-                      {assignee.name}
-                    </span>
-                    {assignedAssigneeIds.includes(assignee.id) && (
-                      <Check size={16} className="text-purple-600" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      )}
+            </>
+          );
+
+          // Use portal when dropdownPosition is set (overflow detected)
+          if (dropdownPosition && typeof window !== "undefined") {
+            return createPortal(dropdownContent, document.body);
+          }
+
+          // Otherwise render normally
+          return dropdownContent;
+        })()}
     </div>
   );
 }

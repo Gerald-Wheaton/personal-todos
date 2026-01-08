@@ -28,6 +28,7 @@ export default function TodoItem({ todo, assignees = [], category }: TodoItemPro
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [isPending, startTransition] = useTransition();
   const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -130,26 +131,35 @@ export default function TodoItem({ todo, assignees = [], category }: TodoItemPro
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   };
 
-  const getHoverStyle = () => {
+  // Lighten color for hover states by blending with white
+  const lightenColor = (hex: string, amount: number) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    // Blend with white (255, 255, 255) based on amount (0-1)
+    const newR = Math.round(r + (255 - r) * amount);
+    const newG = Math.round(g + (255 - g) * amount);
+    const newB = Math.round(b + (255 - b) * amount);
+    return `rgb(${newR}, ${newG}, ${newB})`;
+  };
+
+  const getHoverBackground = () => {
+    if (!isHovered) return undefined;
+
     // No assignees assigned - use purple opaque background
     if (assignees.length === 0 || assignedAssignees.length === 0) {
-      return {
-        '--hover-bg': 'rgb(243 232 255)', // purple-100
-      } as React.CSSProperties;
+      return 'rgb(243, 232, 255)'; // purple-100
     }
 
     if (assignedAssignees.length === 1) {
       // Single assignee - use their color with low opacity
-      return {
-        '--hover-bg': hexToRgba(assignedAssignees[0].color, 0.12),
-      } as React.CSSProperties;
+      return hexToRgba(assignedAssignees[0].color, 0.12);
     }
 
-    // Multiple assignees - create gradient with opaque colors
-    const colors = assignedAssignees.map((a) => hexToRgba(a.color, 0.4)).join(', ');
-    return {
-      '--hover-bg': `linear-gradient(135deg, ${colors})`,
-    } as React.CSSProperties;
+    // Multiple assignees - create gradient with lightened colors
+    // Lighten each color by 85% (making them very light tints) for a subtle gradient effect
+    const colors = assignedAssignees.map((a) => lightenColor(a.color, 0.85)).join(', ');
+    return `linear-gradient(135deg, ${colors})`;
   };
 
   if (isEditing) {
@@ -229,10 +239,12 @@ export default function TodoItem({ todo, assignees = [], category }: TodoItemPro
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, x: -100, scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-      style={getHoverStyle()}
+      style={{ background: getHoverBackground() }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={`group flex items-start gap-3 p-3 rounded-lg transition-all ${
         isPending ? 'opacity-50' : ''
-      } [&:hover]:!bg-[var(--hover-bg)]`}
+      }`}
     >
       <TodoCheckbox
         checked={isCompleted}
